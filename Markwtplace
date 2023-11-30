@@ -1,0 +1,68 @@
+import json
+import boto3
+from datetime import datetime, timedelta
+
+# Initialize AWS services
+dynamodb = boto3.resource('dynamodb')
+ses = boto3.client('ses')
+payment_gateway_client = boto3.client('your_payment_gateway')  # Replace with the actual payment gateway client
+
+def book_service_handler(event, context):
+    # Parse input data from the event
+    user_id = event['user_id']
+    service_provider_id = event['service_provider_id']
+    booking_date = event['booking_date']
+    booking_duration = event['booking_duration']
+
+    # Validate inputs (Add your own validation logic)
+    if not all([user_id, service_provider_id, booking_date, booking_duration]):
+        return {"statusCode": 400, "body": json.dumps("Invalid input parameters")}
+
+    # Check availability in the database (Assuming a DynamoDB table named 'Bookings')
+    bookings_table = dynamodb.Table('Bookings')
+    # Add your logic to check availability, create booking records, and update schedules
+
+    # Send booking confirmation to the user (Assuming you have SES configured)
+    ses.send_email(
+        Source='your_email@example.com',
+        Destination={'ToAddresses': [event['user_email']]},
+        Message={
+            'Subject': {'Data': 'Booking Confirmation'},
+            'Body': {'Text': {'Data': 'Your booking has been confirmed!'}}
+        }
+    )
+
+    return {"statusCode": 200, "body": json.dumps("Booking successful")}
+
+
+def process_payment_handler(event, context):
+    # Parse input data from the event
+    user_id = event['user_id']
+    amount = event['amount']
+    payment_token = event['payment_token']
+
+    # Validate inputs (Add your own validation logic)
+    if not all([user_id, amount, payment_token]):
+        return {"statusCode": 400, "body": json.dumps("Invalid input parameters")}
+
+    # Integrate with the payment gateway to process payment
+    payment_response = payment_gateway_client.process_payment(
+        amount=amount,
+        token=payment_token
+    )
+
+    # Check the payment response and update the database accordingly (Assuming a DynamoDB table named 'Payments')
+    payments_table = dynamodb.Table('Payments')
+    # Add your logic to update payment details and transaction status
+
+    # Send payment receipt to the user (Assuming you have SES configured)
+    ses.send_email(
+        Source='your_email@example.com',
+        Destination={'ToAddresses': [event['user_email']]},
+        Message={
+            'Subject': {'Data': 'Payment Receipt'},
+            'Body': {'Text': {'Data': 'Thank you for your payment!'}}
+        }
+    )
+
+    return {"statusCode": 200, "body": json.dumps("Payment processed successfully")}
